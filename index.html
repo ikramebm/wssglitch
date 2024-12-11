@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>ESP32-CAM Stream</title>
+    <style>
+        body { font-family: Arial; text-align: center; }
+        #videoElement { max-width: 100%; }
+        .controls { margin: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Streaming ESP32-CAM</h1>
+    <video id="videoElement" autoplay></video>
+    <div class="controls">
+        <button id="startBtn">Démarrer Stream</button>
+        <button id="stopBtn">Arrêter Stream</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
+    <script>
+        const socket = io('wss://ikrame-s-websocket-server.glitch.me/');
+        const videoElement = document.getElementById('videoElement');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        let peerConnection;
+
+        socket.emit('register-web');
+
+        // Configurer WebRTC
+        function setupPeerConnection() {
+            peerConnection = new RTCPeerConnection({
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' }
+                ]
+            });
+
+            peerConnection.ontrack = (event) => {
+                videoElement.srcObject = event.streams[0];
+            };
+        }
+
+        // Événements Socket.IO
+        socket.on('video-frame', (frame) => {
+            // Afficher la frame si pas de WebRTC
+            videoElement.src = 'data:image/jpeg;base64,' + frame;
+        });
+
+        // Boutons de contrôle
+        startBtn.onclick = () => {
+            socket.emit('start-stream');
+            setupPeerConnection();
+        };
+
+        stopBtn.onclick = () => {
+            socket.emit('stop-stream');
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+        };
+    </script>
+</body>
+</html>
